@@ -1,9 +1,39 @@
 <?php
+	
+	const CONFIG_DIRECTORY = 'cfgs/';
 
 	function file_diff_errors($error_code){
 		switch($error_code){
-			case 1: return "Файл не найден"; break;
+			case 1: {return "Файл не выбран"; break;}
+			case 2: {return "Файл не найден"; break;}
 		}
+	}
+
+	function get_config($conf_file){
+		$cfg_file = file($conf_file);
+		$cfg = [];
+		foreach($cfg_file as $key => $param){
+			$array = explode(" ", $param);
+			$cfg[$array[0]] = trim(implode(" ", array_slice($array, 1)));
+		}
+		
+		return $cfg;
+	}
+
+	function make_session_config($session){
+		if($session !== ''){
+			if(file_exists(CONFIG_DIRECTORY.$session)){
+				$cfg = get_config(CONFIG_DIRECTORY.$session);
+			}
+			else {
+				$cfg['error_code'] = 2;
+			}
+		}
+		else {
+			$cfg['error_code'] = 1;
+		}
+		
+		return $cfg;
 	}
 
 	session_start();
@@ -13,39 +43,12 @@
 	if(isset($_POST['conf1'])) $_SESSION['conf1'] = $_POST['conf1'];
 	if(isset($_POST['conf2'])) $_SESSION['conf2'] = $_POST['conf2'];
 
-	if($_SESSION['conf1'] !== ''){
-		if(file_exists("cfgs/".$_SESSION['conf1'])){
-			$cfg1_file = file("cfgs/".$_SESSION['conf1']);
-			$cfg1 = [];
-			foreach($cfg1_file as $key => $param){
-				$tmp = explode(" ",$param);
-				$tmp_key = $tmp[0];
-				unset($tmp[0]);
-				$tmp_val = trim(implode(" ",$tmp));
-				$cfg1[$tmp_key] = $tmp_val;
-			}
-		}
-	}
-	else {
-		$cfg1['error_code'] = 1;
-	}
+	//Первый конфиг
+	$cfg1 = make_session_config($_SESSION['conf1']);
 
-	if($_SESSION['conf2'] !== ''){
-		if(file_exists("cfgs/".$_SESSION['conf2'])){
-			$cfg2_file = file("cfgs/".$_SESSION['conf2']);
-			$cfg2 = array();
-			foreach($cfg2_file as $key => $param){
-				$tmp = explode(" ",$param);
-				$tmp_key = $tmp[0];
-				unset($tmp[0]);
-				$tmp_val = trim(implode(" ",$tmp));
-				$cfg2[$tmp_key] = $tmp_val;
-			}
-		}
-	}
-	else {
-		$cfg2['error_code'] = 1;
-	}
+	//Второй конфиг
+	$cfg2 = make_session_config($_SESSION['conf2']);
+	
 	
 	if(!isset($cfg1['error_code']) && !isset($cfg2['error_code'])) {
 		foreach($cfg1 as $key => $val){
@@ -56,8 +59,8 @@
 		}
 		ksort($cfg1);
 		ksort($cfg2);
+		
 	}
-	
 ?>
 
 <!doctype html>
@@ -83,14 +86,23 @@
 						echo "<tr>
 						<td class='line-numbers'>".$i++."</td>
 						<td class='first_config'>".$key." ".$value."</td>";
-						if(!isset($cfg2['error_code'])){
-							echo "<td class='second_config'>".$key." ".$cfg2[$key]."</td>";
+						if (isset($cfg2['error_code'])){
+							echo "<td class='second_config'>".file_diff_errors($cfg2['error_code'])."</td>";
+							unset($cfg2);
 						}
-						else {
-							//echo "<td class='second_config'>".file_diff_errors($cfg2['error_code'])."</td>";
+						elseif(isset($cfg2)){
+							echo "<td class='second_config'>".$key." ".$cfg2[$key]."</td>";
 						}
 						echo "</tr>";
 					}	
+				}
+				else {
+					echo "<tr>
+					<td></td>
+					<td class='first_config'>".file_diff_errors($cfg2['error_code'])."</td>
+					<td class='second_config'></td>
+					</tr>
+					";
 				}
 			?>
 		</table>
