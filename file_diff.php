@@ -1,95 +1,99 @@
 <?php
-	$cfg1_file = file("cfgs/conf1.cfg");
-	$cfg2_file = file("cfgs/conf2.cfg");
-	$cfg1 = array();
-	$cfg2 = array();
-	foreach($cfg1_file as $key => $param){
-		$tmp = explode(" ",$param);
-		$tmp_key = $tmp[0];
-		unset($tmp[0]);
-		$tmp_val = trim(implode(" ",$tmp));
-		$cfg1[$tmp_key] = $tmp_val;
-	}
-	foreach($cfg2_file as $key => $param){
-		$tmp = explode(" ",$param);
-		$tmp_key = $tmp[0];
-		unset($tmp[0]);
-		$tmp_val = trim(implode(" ",$tmp));
-		$cfg2[$tmp_key] = $tmp_val;
-	}
-	foreach($cfg1 as $key => $val){
-		if($val !== $cfg2[$key]){
-			$cfg1[$key] = "<mark>".$cfg1[$key]."</mark>";
-			$cfg2[$key] = "<mark>".$cfg2[$key]."</mark>";
+
+	function file_diff_errors($error_code){
+		switch($error_code){
+			case 1: return "Файл не найден"; break;
 		}
 	}
-	ksort($cfg1);
-	ksort($cfg2);
+
+	session_start();
+	if(!isset($_SESSION['conf1'])) $_SESSION['conf1'] = '';
+	if(!isset($_SESSION['conf2'])) $_SESSION['conf2'] = '';
+	
+	if(isset($_POST['conf1'])) $_SESSION['conf1'] = $_POST['conf1'];
+	if(isset($_POST['conf2'])) $_SESSION['conf2'] = $_POST['conf2'];
+
+	if($_SESSION['conf1'] !== ''){
+		if(file_exists("cfgs/".$_SESSION['conf1'])){
+			$cfg1_file = file("cfgs/".$_SESSION['conf1']);
+			$cfg1 = [];
+			foreach($cfg1_file as $key => $param){
+				$tmp = explode(" ",$param);
+				$tmp_key = $tmp[0];
+				unset($tmp[0]);
+				$tmp_val = trim(implode(" ",$tmp));
+				$cfg1[$tmp_key] = $tmp_val;
+			}
+		}
+	}
+	else {
+		$cfg1['error_code'] = 1;
+	}
+
+	if($_SESSION['conf2'] !== ''){
+		if(file_exists("cfgs/".$_SESSION['conf2'])){
+			$cfg2_file = file("cfgs/".$_SESSION['conf2']);
+			$cfg2 = array();
+			foreach($cfg2_file as $key => $param){
+				$tmp = explode(" ",$param);
+				$tmp_key = $tmp[0];
+				unset($tmp[0]);
+				$tmp_val = trim(implode(" ",$tmp));
+				$cfg2[$tmp_key] = $tmp_val;
+			}
+		}
+	}
+	else {
+		$cfg2['error_code'] = 1;
+	}
+	
+	if(!isset($cfg1['error_code']) && !isset($cfg2['error_code'])) {
+		foreach($cfg1 as $key => $val){
+			if($val !== $cfg2[$key]){
+				$cfg1[$key] = "<mark>".$cfg1[$key]."</mark>";
+				$cfg2[$key] = "<mark>".$cfg2[$key]."</mark>";
+			}
+		}
+		ksort($cfg1);
+		ksort($cfg2);
+	}
+	
 ?>
 
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-	<style>
-		html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, menu, nav, output, ruby, section, summary, time, mark, audio, video, input, textarea {
-			margin: 0;
-			padding: 0;
-			border: 0;
-			font: inherit;
-			font-size: 100%;
-			vertical-align: baseline;	
-		}
-		#main {
-			margin:0 auto;
-			min-height:300px;
-			background:#eeeeee;
-			width: 1200px;
-			padding:30px;
-		}
-		.line-numbers,.first_config,.second_config{
-			display: inline-block;
-			margin: 0 auto;
-			vertical-align: top;
-			padding:5px;
-			font-family:Consolas, "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", Monaco, "Courier New", "monospace";
-			font-size: 16px;
-		}
-		.first_config,.second_config {
-			border: 1px solid #B8B8B8;
-		}
-		.line-numbers {
-			width:2%;
-		}
-		.first_config {
-			width:47%;
-			background: #FFFFFF;
-		}
-		.second_config {
-			width:47%;
-			background: #FFFFFF;
-		}
-	</style>
+<link href="style.css" rel="stylesheet" type="text/css">
 <title>Сравнить конфиги</title>
 </head>
 
 <body>
 	<div id="main">
-		<div class='line-numbers'></div>
-		<div class='first_config'>
+		<table style='width:100%;'>
+			<tr>
+				<td class='line-numbers'></td>
+				<td class='first_config'><form action="file_diff.php" method="post"><input type='text' value='<?=$_SESSION['conf1'] ?>' name='conf1' placeholder="Первый конфиг"></form></td>
+				<td class='second_config'><form action="file_diff.php" method="post"><input type='text' value='<?=$_SESSION['conf2'] ?>' name='conf2' placeholder="Второй конфиг"></form></td>
+			</tr>
 			<?php 
-				foreach($cfg1 as $key => $value){
-					echo $key." ".$value."<br>";
+				$i = 1;
+			    if (!isset($cfg1['error_code'])){
+					foreach($cfg1 as $key => $value){
+						echo "<tr>
+						<td class='line-numbers'>".$i++."</td>
+						<td class='first_config'>".$key." ".$value."</td>";
+						if(!isset($cfg2['error_code'])){
+							echo "<td class='second_config'>".$key." ".$cfg2[$key]."</td>";
+						}
+						else {
+							//echo "<td class='second_config'>".file_diff_errors($cfg2['error_code'])."</td>";
+						}
+						echo "</tr>";
+					}	
 				}
 			?>
-		</div>
-		<div class='second_config'>
-			<?php 
-				foreach($cfg2 as $key => $value){
-					echo $key." ".$value."<br>";
-				}
-			?>
-		</div>
+		</table>
 	</div>
 </body>
 </html>
