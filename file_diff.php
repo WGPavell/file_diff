@@ -99,7 +99,7 @@
 				else {
 					echo "<tr>
 					<td></td>
-					<td class='first_config'>".file_diff_errors($cfg2['error_code'])."</td>
+					<td class='first_config'>".file_diff_errors($cfg1['error_code'])."</td>
 					<td class='second_config'></td>
 					</tr>
 					";
