@@ -2,17 +2,17 @@
 	
 	const CONFIG_DIRECTORY = 'cfgs/';
 
-	function file_diff_errors($error_code){
+	function file_diff_errors(int $error_code) {
 		switch($error_code){
 			case 1: {return "Файл не выбран"; break;}
 			case 2: {return "Файл не найден"; break;}
 		}
 	}
 
-	function get_config($conf_file){
+	function get_config($conf_file) {
 		$cfg_file = file($conf_file);
 		$cfg = [];
-		foreach($cfg_file as $key => $param){
+		foreach($cfg_file as $key => $param) {
 			$array = explode(" ", $param);
 			$cfg[$array[0]] = trim(implode(" ", array_slice($array, 1)));
 		}
@@ -20,9 +20,9 @@
 		return $cfg;
 	}
 
-	function make_session_config($session){
+	function make_session_config($session) {
 		if($session !== ''){
-			if(file_exists(CONFIG_DIRECTORY.$session)){
+			if(file_exists(CONFIG_DIRECTORY.$session)) {
 				$cfg = get_config(CONFIG_DIRECTORY.$session);
 			}
 			else {
@@ -49,17 +49,25 @@
 	//Второй конфиг
 	$cfg2 = make_session_config($_SESSION['conf2']);
 	
-	
-	if(!isset($cfg1['error_code']) && !isset($cfg2['error_code'])) {
-		foreach($cfg1 as $key => $val){
-			if($val !== $cfg2[$key]){
-				$cfg1[$key] = "<mark>".$cfg1[$key]."</mark>";
-				$cfg2[$key] = "<mark>".$cfg2[$key]."</mark>";
+	//Список параметров с обоих файлов
+	$cfg_params = array_unique(array_keys(array_merge($cfg1, $cfg2)));
+	sort($cfg_params);
+	$html_cfg_params = $cfg_params;
+
+	if(!array_key_exists('error_code',$cfg1) && !array_key_exists('error_code', $cfg2)) {
+		foreach($cfg_params as $index => $param){
+			if(array_key_exists($param, $cfg1) && array_key_exists($param, $cfg2)) {
+				if($cfg1[$param] !== $cfg2[$param]) {
+					$cfg1[$param] = "<mark>".$cfg1[$param]."</mark>";
+					$cfg2[$param] = "<mark>".$cfg2[$param]."</mark>";
+				}
+			}
+			else {
+				$html_cfg_params[$index] = "<mark class='lone'>".$html_cfg_params[$index];
+				if(array_key_exists($param, $cfg1)) $cfg1[$param].="</mark>";
+				else $cfg2[$param].="</mark>";
 			}
 		}
-		ksort($cfg1);
-		ksort($cfg2);
-		
 	}
 ?>
 
@@ -81,17 +89,24 @@
 			</tr>
 			<?php 
 				$i = 1;
-			    if (!isset($cfg1['error_code'])){
-					foreach($cfg1 as $key => $value){
+			    if (!array_key_exists('error_code',$cfg1)) {
+					foreach($cfg_params as $index => $param) {
 						echo "<tr>
 						<td class='line-numbers'>".$i++."</td>
-						<td class='first_config'>".$key." ".$value."</td>";
-						if (isset($cfg2['error_code'])){
+						<td class='first_config'>";
+						if(array_key_exists($param, $cfg1))
+							echo $html_cfg_params[$index]." ".$cfg1[$param];
+						echo "</td>";
+						
+						if (isset($cfg2['error_code'])) {
 							echo "<td class='second_config'>".file_diff_errors($cfg2['error_code'])."</td>";
 							unset($cfg2);
 						}
-						elseif(isset($cfg2)){
-							echo "<td class='second_config'>".$key." ".$cfg2[$key]."</td>";
+						elseif(isset($cfg2)) {
+							echo "<td class='second_config'>";
+							if(array_key_exists($param, $cfg2))
+								echo $html_cfg_params[$index]." ".$cfg2[$param];
+							echo "</td>";
 						}
 						echo "</tr>";
 					}	
