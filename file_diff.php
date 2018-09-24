@@ -6,6 +6,7 @@
 		switch($error_code){
 			case 1: {return "Файл не выбран"; break;}
 			case 2: {return "Файл не найден"; break;}
+			default: {return "Неизвестная ошибка";}
 		}
 	}
 
@@ -20,10 +21,10 @@
 		return $cfg;
 	}
 
-	function make_session_config($session) {
-		if($session !== ''){
-			if(file_exists(CONFIG_DIRECTORY.$session)) {
-				$cfg = get_config(CONFIG_DIRECTORY.$session);
+	function make_session_config($file_name) {
+		if($file_name !== ''){
+			if(file_exists(CONFIG_DIRECTORY.$file_name)) {
+				$cfg = get_config(CONFIG_DIRECTORY.$file_name);
 			}
 			else {
 				$cfg['error_code'] = 2;
@@ -52,22 +53,46 @@
 	//Список параметров с обоих файлов
 	$cfg_params = array_unique(array_keys(array_merge($cfg1, $cfg2)));
 	sort($cfg_params);
-	$html_cfg_params = $cfg_params;
 
-	if(!array_key_exists('error_code',$cfg1) && !array_key_exists('error_code', $cfg2)) {
+	$html_cfg_diffirence = '';
+
+	if(!array_key_exists('error_code', $cfg1) && !array_key_exists('error_code', $cfg2)) {
+		$i = 1;
 		foreach($cfg_params as $index => $param){
+			$html_cfg_diffirence .= "<tr>
+						<td class='line-numbers'>".$i++."</td>
+						<td class='first_config'>";
 			if(array_key_exists($param, $cfg1) && array_key_exists($param, $cfg2)) {
 				if($cfg1[$param] !== $cfg2[$param]) {
-					$cfg1[$param] = "<mark>".$cfg1[$param]."</mark>";
-					$cfg2[$param] = "<mark>".$cfg2[$param]."</mark>";
+					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;<mark>".$cfg1[$param]."</mark></td>
+						<td class='second_config'>".$cfg_params[$index]."&nbsp;<mark>".$cfg2[$param]."</mark></td>";
+				}
+				else {
+					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;".$cfg1[$param]."</td>
+						<td class='second_config'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]."</td>";
 				}
 			}
 			else {
-				$html_cfg_params[$index] = "<mark class='lone'>".$html_cfg_params[$index];
-				if(array_key_exists($param, $cfg1)) $cfg1[$param].="</mark>";
-				else $cfg2[$param].="</mark>";
+				if(array_key_exists($param, $cfg1)) {
+					$html_cfg_diffirence .= "<mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg1[$param]."</mark></td><td class='second_config'></td>";
+				}
+				else {
+					$html_cfg_diffirence .= "</td><td class='second_config'><mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]."</mark></td>";
+				}
 			}
+			$html_cfg_diffirence .= "</tr>";
 		}
+	}
+	else {
+		$html_cfg_diffirence = "<tr><td></td><td class='first_config'>";
+		if(array_key_exists('error_code', $cfg1)) {
+			$html_cfg_diffirence .= file_diff_errors($cfg1['error_code']);
+		}
+		$html_cfg_diffirence .= "</td><td class='second_config'>";
+		if(array_key_exists('error_code', $cfg2)) {
+			$html_cfg_diffirence .= file_diff_errors($cfg2['error_code']);
+		}
+		$html_cfg_diffirence .= "</td></tr>";
 	}
 ?>
 
@@ -87,39 +112,7 @@
 				<td class='first_config'><form action="file_diff.php" method="post"><input type='text' value='<?=$_SESSION['conf1'] ?>' name='conf1' placeholder="Первый конфиг"></form></td>
 				<td class='second_config'><form action="file_diff.php" method="post"><input type='text' value='<?=$_SESSION['conf2'] ?>' name='conf2' placeholder="Второй конфиг"></form></td>
 			</tr>
-			<?php 
-				$i = 1;
-			    if (!array_key_exists('error_code',$cfg1)) {
-					foreach($cfg_params as $index => $param) {
-						echo "<tr>
-						<td class='line-numbers'>".$i++."</td>
-						<td class='first_config'>";
-						if(array_key_exists($param, $cfg1))
-							echo $html_cfg_params[$index]." ".$cfg1[$param];
-						echo "</td>";
-						
-						if (isset($cfg2['error_code'])) {
-							echo "<td class='second_config'>".file_diff_errors($cfg2['error_code'])."</td>";
-							unset($cfg2);
-						}
-						elseif(isset($cfg2)) {
-							echo "<td class='second_config'>";
-							if(array_key_exists($param, $cfg2))
-								echo $html_cfg_params[$index]." ".$cfg2[$param];
-							echo "</td>";
-						}
-						echo "</tr>";
-					}	
-				}
-				else {
-					echo "<tr>
-					<td></td>
-					<td class='first_config'>".file_diff_errors($cfg1['error_code'])."</td>
-					<td class='second_config'></td>
-					</tr>
-					";
-				}
-			?>
+			<?=$html_cfg_diffirence ?>
 		</table>
 	</div>
 </body>
