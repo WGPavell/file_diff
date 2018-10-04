@@ -98,6 +98,7 @@
 						$i--;
 					} elseif($finded_param !== null) {
 						$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td></td><td class='first_config'>".(($cfg1[$cfg1_line][0] === ' ') ? " " : "").$searching_param[0]." <mark>".implode(" ",array_slice($searching_param, 1))."</mark></td><td class='second_config'>".(($cfg2[$cfg2_line][0] === ' ') ? " " : "").$finded_param[0]." <mark>".implode(" ",array_slice($finded_param, 1))."</mark></td></tr>";
+						$cfg2_line = min($j, count($cfg2) - 1) - 1;
 						/* for($index = 1; $index < count($searching_param); $index++) {
 							if($searching_param[$index] !== $finded_param[min($index, count($searching_param) - 1)]) {
 								$html_cfg_diffirence .= " <mark>".$searching_param[$index]."</mark>";
