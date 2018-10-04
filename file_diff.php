@@ -19,7 +19,7 @@
 			$keys_count[$array[0]] = (array_key_exists($array[0],$keys_count)) ? $keys_count[$array[0]] + 1 : 1;
 			$cfg[$array[0].$keys_count[$array[0]]]["key"] = (($param === ' ') ? " " : "").$array[0];
 			$cfg[$array[0].$keys_count[$array[0]]]["value"] = trim(implode(" ", array_slice($array, 1)));
-			$cfg['full_values'][] = $param;
+			//$cfg['full_values'][] = $param;
 		}
 		return $cfg;
 	}
@@ -49,13 +49,13 @@
 
 	//Первый конфиг
 	$cfg1 = make_session_config($_SESSION['conf1']);
-	$cfg1_full_values = $cfg1['full_values'];
-	unset($cfg1['full_values']);
+	//$cfg1_full_values = $cfg1['full_values'];
+	//unset($cfg1['full_values']);
 
 	//Второй конфиг
 	$cfg2 = make_session_config($_SESSION['conf2']);
-	$cfg2_full_values = $cfg2['full_values'];
-	unset($cfg2['full_values']);
+	//$cfg2_full_values = $cfg2['full_values'];
+	//unset($cfg2['full_values']);
 	
 	//Список параметров с обоих файлов
 	$cfg_params = array_keys(array_merge($cfg1, $cfg2));
