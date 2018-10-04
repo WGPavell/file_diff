@@ -11,6 +11,7 @@
 	}
 
 	function get_config($conf_file) {
+		return file($conf_file);
 		$cfg_file = file($conf_file);
 		$cfg = [];
 		$keys_count = [];
@@ -58,15 +59,80 @@
 	//unset($cfg2['full_values']);
 	
 	//Список параметров с обоих файлов
-	$cfg_params = array_keys(array_merge($cfg1, $cfg2));
+	//$cfg_params = array_keys(array_merge($cfg1, $cfg2));
 	//sort($cfg_params);
 
 	$html_cfg_diffirence = '';
 
 	if(!array_key_exists('error_code', $cfg1) && !array_key_exists('error_code', $cfg2)) {
-		$i = 1;
-		foreach($cfg_params as $index => $param){
-			$html_cfg_diffirence .= "<tr>
+		$k = 1;
+		$cfg1_line = 0;
+		$cfg2_line = 0;
+		for($i = 0; $i <= max(count($cfg1) - 1, count($cfg2) - 1); $i++) {
+			if($cfg1_line < count($cfg1)) {
+				if($cfg1[$cfg1_line] === $cfg2[$cfg2_line]) {
+					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$cfg2_line]."</td></tr>";
+				} else {
+					$l = $k;
+					$html_temp_diff = '';
+					$searching_param = explode(' ', trim($cfg1[$cfg1_line]));
+					$finded_param = null;
+					for($j = $cfg2_line; $j <= count($cfg2) - 1; $j++) {
+						if($cfg1[$cfg1_line] === $cfg2[$j]) {
+							$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$l++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$j]."</td></tr>";
+							$k = $l;
+							break;
+						} elseif($finded_param === null && $searching_param[0] === explode(' ', trim($cfg2[$j]))[0]) {
+							$finded_param = explode(' ', trim($cfg2[$j]));
+							$k = $l;
+							//echo "<pre>";
+							//var_dump($html_temp_diff);
+							//echo "</pre>"; 
+						} elseif($finded_param === null) {
+							$html_temp_diff .= "<tr><td class='line-numbers'>".$l++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
+						}
+					}
+					if ($k !== $l) {
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
+						$cfg2_line--;
+						$i--;
+					} elseif($finded_param !== null) {
+						$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td></td><td class='first_config'>".(($cfg1[$cfg1_line][0] === ' ') ? " " : "").$searching_param[0]." <mark>".implode(" ",array_slice($searching_param, 1))."</mark></td><td class='second_config'>".(($cfg2[$cfg2_line][0] === ' ') ? " " : "").$finded_param[0]." <mark>".implode(" ",array_slice($finded_param, 1))."</mark></td></tr>";
+						/* for($index = 1; $index < count($searching_param); $index++) {
+							if($searching_param[$index] !== $finded_param[min($index, count($searching_param) - 1)]) {
+								$html_cfg_diffirence .= " <mark>".$searching_param[$index]."</mark>";
+							}
+							else {
+								$html_cfg_diffirence .= " ".$searching_param[$index];
+							}
+						}
+						$html_cfg_diffirence .= "</td><td class='second_config'>".$finded_param[0];
+						for($index = 1; $index < count($finded_param); $index++) {
+							if($finded_param[$index] !== $searching_param[min($index, count($searching_param) - 1)]) {
+								$html_cfg_diffirence .= " <mark>".$finded_param[$index]."</mark>";
+							}
+							else {
+								$html_cfg_diffirence .= " ".$finded_param[$index];
+							}
+						} */
+						//$html_cfg_diffirence .= "</td></tr>";
+						//$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'><mark>".$cfg2[$cfg2_line]."</mark></td></tr>";
+					} else
+						$cfg2_line = min($j, count($cfg2) - 1);
+				}
+			} elseif($cfg2_line < count($cfg2)) {
+				$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
+			} else break;
+			$cfg1_line += ($cfg1_line < count($cfg1)) ? 1 : 0;
+			$cfg2_line += ($cfg2_line < count($cfg2)) ? 1 : 0;
+			//echo $cfg1_line." ".$cfg2_line." ";
+		}
+		//$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$i++."</td><td class='first_config'>".$param."</td><td class='second_config'></td></tr>";
+		/* foreach($cfg1 as $index => $param) {
+			
+			
+			
+			 $html_cfg_diffirence .= "<tr>
 						<td class='line-numbers'>".$i++."</td>
 						<td class='first_config'>";
 			if(array_key_exists($param, $cfg1) && array_key_exists($param, $cfg2)) {
@@ -87,8 +153,8 @@
 					$html_cfg_diffirence .= "</td><td class='second_config'><mark class='lone'>".$cfg2[$param]['key']."&nbsp;".$cfg2[$param]['value']."</mark></td>";
 				}
 			}
-			$html_cfg_diffirence .= "</tr>";
-		}
+			$html_cfg_diffirence .= "</tr>"; 
+		} */
 	}
 	else {
 		$html_cfg_diffirence = "<tr><td></td><td class='first_config'>";
