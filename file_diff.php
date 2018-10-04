@@ -13,16 +13,13 @@
 	function get_config($conf_file) {
 		$cfg_file = file($conf_file);
 		$cfg = [];
-		$last_param = ""; 
+		$last_param = "";
+		$current_block = 0;
 		foreach($cfg_file as $key => $param) {
-			if ($param[0] === '!') continue;
-			elseif ($param[0] === ' ') {
-				$cfg[$last_param]['subvalues'][] = $param;
-			}
-			else {
-				$array = explode(" ", $param);
-				$cfg[$array[0]]['value'] = trim(implode(" ", array_slice($array, 1)));
-				$last_param = $array[0];
+			if ($param[0] === ' ') {
+				$cfg[$current_block-1]['subvalues'][] = $param;
+			} else {
+				$cfg[$current_block++]['value'] = $param;
 			}
 		}
 		
@@ -54,20 +51,36 @@
 
 	//Первый конфиг
 	$cfg1 = make_session_config($_SESSION['conf1']);
-	echo "<pre>";
-	print_r($cfg1);
-	exit();
 
 	//Второй конфиг
 	$cfg2 = make_session_config($_SESSION['conf2']);
 	
 	//Список параметров с обоих файлов
-	$cfg_params = array_unique(array_keys(array_merge($cfg1, $cfg2)));
-	sort($cfg_params);
+	//$cfg_params = array_unique(array_keys(array_merge($cfg1, $cfg2)));
 
 	$html_cfg_diffirence = '';
+	
+	$cfg1_size = count($cfg1);
+	$cfg2_size = count($cfg2);
+	$cfg1_current = 6;
+	$cfg2_current = 0;
 
-	if(!array_key_exists('error_code', $cfg1) && !array_key_exists('error_code', $cfg2)) {
+	$cfg1_params_list = array_map(function($a){
+		return explode(" ",$a)[0];
+	}, array_column($cfg1, "value"));
+
+	$cfg2_params_list = array_map(function($a){
+		return explode(" ",$a)[0];
+	}, array_column($cfg2, "value"));
+	
+	while(true) {
+		$searching_param = array_search($cfg1_params_list[$cfg1_current], $cfg2_params_list);
+		echo $searching_param;
+		break;
+	} exit();
+
+
+	/*if(!array_key_exists('error_code', $cfg1) && !array_key_exists('error_code', $cfg2)) {
 		$i = 1;
 		foreach($cfg_params as $index => $param){
 			$html_cfg_diffirence .= "<tr>
@@ -104,7 +117,7 @@
 			$html_cfg_diffirence .= file_diff_errors($cfg2['error_code']);
 		}
 		$html_cfg_diffirence .= "</td></tr>";
-	}
+	} */
 ?>
 
 <!doctype html>
