@@ -13,9 +13,17 @@
 	function get_config($conf_file) {
 		$cfg_file = file($conf_file);
 		$cfg = [];
+		$last_param = ""; 
 		foreach($cfg_file as $key => $param) {
-			$array = explode(" ", $param);
-			$cfg[$array[0]] = trim(implode(" ", array_slice($array, 1)));
+			if ($param[0] === '!') continue;
+			elseif ($param[0] === ' ') {
+				$cfg[$last_param]['subvalues'][] = $param;
+			}
+			else {
+				$array = explode(" ", $param);
+				$cfg[$array[0]]['value'] = trim(implode(" ", array_slice($array, 1)));
+				$last_param = $array[0];
+			}
 		}
 		
 		return $cfg;
@@ -46,6 +54,9 @@
 
 	//Первый конфиг
 	$cfg1 = make_session_config($_SESSION['conf1']);
+	echo "<pre>";
+	print_r($cfg1);
+	exit();
 
 	//Второй конфиг
 	$cfg2 = make_session_config($_SESSION['conf2']);
@@ -63,21 +74,21 @@
 						<td class='line-numbers'>".$i++."</td>
 						<td class='first_config'>";
 			if(array_key_exists($param, $cfg1) && array_key_exists($param, $cfg2)) {
-				if($cfg1[$param] !== $cfg2[$param]) {
-					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;<mark>".$cfg1[$param]."</mark></td>
-						<td class='second_config'>".$cfg_params[$index]."&nbsp;<mark>".$cfg2[$param]."</mark></td>";
+				if($cfg1[$param]['value'] !== $cfg2[$param]['value']) {
+					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;<mark>".$cfg1[$param]['value']."</mark></td>
+						<td class='second_config'>".$cfg_params[$index]."&nbsp;<mark>".$cfg2[$param]['value']."</mark></td>";
 				}
 				else {
-					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;".$cfg1[$param]."</td>
-						<td class='second_config'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]."</td>";
+					$html_cfg_diffirence .= $cfg_params[$index]."&nbsp;".$cfg1[$param]['value']."</td>
+						<td class='second_config'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]['value']."</td>";
 				}
 			}
 			else {
 				if(array_key_exists($param, $cfg1)) {
-					$html_cfg_diffirence .= "<mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg1[$param]."</mark></td><td class='second_config'></td>";
+					$html_cfg_diffirence .= "<mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg1[$param]['value']."</mark></td><td class='second_config'></td>";
 				}
 				else {
-					$html_cfg_diffirence .= "</td><td class='second_config'><mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]."</mark></td>";
+					$html_cfg_diffirence .= "</td><td class='second_config'><mark class='lone'>".$cfg_params[$index]."&nbsp;".$cfg2[$param]['value']."</mark></td>";
 				}
 			}
 			$html_cfg_diffirence .= "</tr>";
