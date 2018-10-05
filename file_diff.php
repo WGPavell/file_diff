@@ -67,6 +67,7 @@
 		$k = 1;
 		$l = 1;
 		$f = 1;
+		$g = 0;
 		$cfg1_line = 0;
 		$cfg2_line = 0;
 		$html_temp_diff = '';
@@ -184,6 +185,8 @@
 										$cfg2_sequence = $comprasion_sequence;
 										$s = $d + 1;
 										$cfg2_line = $j;
+										$k = $l = $f;
+										$g = $j;
 									}
 								}
 								$html_prev_diff .= "<tr><td class='line-numbers'>".$f++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
@@ -200,7 +203,7 @@
 										unset($finded_param[$s]);
 									}
 								}
-								$cfg2_line = $j;
+								$g = $cfg2_line = $j;
 								$f = $k = $l;
 								$html_prev_diff .= "<tr><td class='line-numbers'>".$f++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
 							} elseif($finded_param === null && $cfg2_line < count($cfg2) - 1) { //Нет совпадений для второго конфига
