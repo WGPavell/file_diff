@@ -63,99 +63,178 @@
 	//sort($cfg_params);
 
 	$html_cfg_diffirence = '';
-
 	if(!array_key_exists('error_code', $cfg1) && !array_key_exists('error_code', $cfg2)) {
 		$k = 1;
+		$l = 1;
+		$f = 1;
 		$cfg1_line = 0;
 		$cfg2_line = 0;
+		$html_temp_diff = '';
+		$html_prev_diff = '';
+		$line_limiter = 0;
 		for($i = 0; $i <= max(count($cfg1) - 1, count($cfg2) - 1); $i++) {
-			if($cfg1_line < count($cfg1)) {
-				if($cfg1[$cfg1_line] === $cfg2[$cfg2_line]) {
-					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$cfg2_line]."</td></tr>";
+			if($cfg1_line < count($cfg1)) { //Конец первого конфига еще не достигнут
+				if($cfg2_line < count($cfg2) && $cfg1[$cfg1_line] === $cfg2[$cfg2_line]) { //Найдено прямое совпадение по строкам
+					$k = max($k, $l);
+					$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$cfg2_line]."</td></tr>";
+					$main_sequence = $cfg1[$cfg1_line];
+					$html_temp_diff = '';
+				} elseif($cfg1[$cfg1_line][0] === ' ') { //Если строка является частью блока
+					if(!empty($main_sequence) && $cfg2[$cfg2_line][0] === ' ') {
+						$param1 = explode(' ', trim($cfg1[$cfg1_line]));
+						$param2 = explode(' ', trim($cfg2[$cfg2_line]));
+						$param1_string = '';
+						$param2_string = '';
+						for($s = 0; $s <= min(count($param1), count($param2)); $s++){
+							if($param1_string." ".$param1[$s] !== $param2_string." ".$param2[$s]) break;
+							else {
+								$param1_string .= $param1[$s]." ";
+								$param2_string .= $param2[$s]." ";
+								unset($param1[$s]);
+								unset($param2[$s]);
+							}
+						}
+						if ($s === 0) {
+							$subsequence_finded = false;
+							$f = $k;
+							$html_prev_diff = "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
+							for($j = $cfg2_line + 1; $j <= count($cfg2) - 1; $j++) {
+								$param2 = explode(' ', trim($cfg2[$j]));
+								$param2_string = '';
+								for($s = 0; $s <= min(count($param1), count($param2)); $s++){
+									if($param1_string." ".$param1[$s] !== $param2_string." ".$param2[$s]) break;
+									else {
+										$param1_string .= $param1[$s]." ";
+										$param2_string .= $param2[$s]." ";
+										unset($param1[$s]);
+										unset($param2[$s]);
+									}
+								}
+								if($s !== 0) {
+									$subsequence_finded = true;
+									break;
+								} else {
+									$html_prev_diff .= "<tr><td class='line-numbers'>".$f++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
+								}
+							}
+							if($subsequence_finded) {
+								$html_cfg_diffirence .= $html_prev_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'> ".$param1_string."<mark>".implode(' ', $param1)."</mark></td><td class='second_config'> ".$param2_string."<mark>".implode(' ', $param2)."</mark></td></tr>";
+								$line_limiter = $cfg2_line = $j;
+							}
+							else {
+								$f = $k;
+								$html_cfg_diffirence .= "<tr><td class='line-numbers'>".--$k."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
+								$k++;
+								$cfg2_line--;
+							}
+						} else {
+							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'> ".$param1_string."<mark>".implode(' ', $param1)."</mark></td><td class='second_config'> ".$param2_string."<mark>".implode(' ', $param2)."</mark></td></tr>";
+							//$cfg2_line++;
+						}
+					} else {
+						if(!empty($html_temp_diff)) {
+							$html_temp_diff = '';
+							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".--$k."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line-1]."</mark></td><td class='second_config'></td></tr>";
+							$k++;
+						}
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
+					}
 				} else {
 					$l = $k;
+					//$f = $k;
+					$html_cfg_diffirence .= $html_temp_diff;
 					$html_temp_diff = '';
 					$searching_param = explode(' ', trim($cfg1[$cfg1_line]));
 					$finded_param = null;
-					for($j = $cfg2_line; $j <= count($cfg2) - 1; $j++) {
+					$prev_finded = false;
+					for($j = $cfg2_line - 1; $j >= $line_limiter + 1; $j--) { //Поиск прямого совпадения из предыдущих строк
 						if($cfg1[$cfg1_line] === $cfg2[$j]) {
-							$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$l++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$j]."</td></tr>";
-							$k = $l;
+							$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$j]."</td></tr>";
+							$prev_finded = true;
+							$cfg2_line = $j;
+							$main_sequence = $cfg1[$cfg1_line];
+							$html_prev_diff = '';
 							break;
-						} elseif($finded_param === null && $searching_param[0] === explode(' ', trim($cfg2[$j]))[0]) {
-							$finded_param = explode(' ', trim($cfg2[$j]));
-							$k = $l;
-							//echo "<pre>";
-							//var_dump($html_temp_diff);
-							//echo "</pre>"; 
-						} elseif($finded_param === null) {
-							$html_temp_diff .= "<tr><td class='line-numbers'>".$l++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
 						}
 					}
-					if ($k !== $l) {
-						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
-						$cfg2_line--;
-						$i--;
-					} elseif($finded_param !== null) {
-						$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td></td><td class='first_config'>".(($cfg1[$cfg1_line][0] === ' ') ? " " : "").$searching_param[0]." <mark>".implode(" ",array_slice($searching_param, 1))."</mark></td><td class='second_config'>".(($cfg2[$cfg2_line][0] === ' ') ? " " : "").$finded_param[0]." <mark>".implode(" ",array_slice($finded_param, 1))."</mark></td></tr>";
-						$cfg2_line = min($j, count($cfg2) - 1) - 1;
-						/* for($index = 1; $index < count($searching_param); $index++) {
-							if($searching_param[$index] !== $finded_param[min($index, count($searching_param) - 1)]) {
-								$html_cfg_diffirence .= " <mark>".$searching_param[$index]."</mark>";
-							}
-							else {
-								$html_cfg_diffirence .= " ".$searching_param[$index];
+					if(!$prev_finded) { //Если прямое совпадение из предыдущих строк не найдено
+						for($j = $cfg2_line; $j <= count($cfg2) - 1; $j++) {
+							if($cfg1[$cfg1_line] === $cfg2[$j]) { //Найдено прямое совпадение в следующих строках
+								$k = max($f, $l);
+								//$f = max($k, $l, $f);
+								$html_cfg_diffirence .= $html_prev_diff.$html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$j]."</td></tr>";
+								$html_prev_diff = '';
+								$html_temp_diff = '';
+								//$k = max($k, $l);
+								$l = max($k, $l);
+								$main_sequence = $cfg1[$cfg1_line];
+								$finded_param = null;
+								break;
+							} elseif($finded_param !== null) { //Если уже имеется частичное совпадение параметров
+								$comprasion_param = explode(' ', trim($cfg2[$j]));
+								$comprasion_sequence = implode(' ', array_slice($comprasion_param, 0, -count($comprasion_param) + $s));
+								for($d = $s; $d < min(count($searching_param), count($comprasion_param)) - 1; $s++){
+									if($cfg1_sequence." ".$searching_param[$d] !== $comprasion_sequence." ".$comprasion_param[$d]) break;
+									else {
+										$cfg1_sequence .= $searching_param[$d]." ";
+										$comprasion_sequence .= $comprasion_param[$d]." ";
+										unset($searching_param[$d]);
+										unset($comprasion_param[$d]);
+										$finded_param = $comprasion_param;
+										$cfg2_sequence = $comprasion_sequence;
+										$s = $d + 1;
+										$cfg2_line = $j;
+									}
+								}
+								$html_prev_diff .= "<tr><td class='line-numbers'>".$f++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
+							} elseif($finded_param === null && $searching_param[0] === explode(' ', trim($cfg2[$j]))[0]) { //Найдено частичное совпадение
+								$finded_param = explode(' ', trim($cfg2[$j]));
+								$cfg1_sequence = '';
+								$cfg2_sequence = '';
+								for($s = 0; $s < min(count($searching_param), count($finded_param)) - 1; $s++){
+									if($cfg1_sequence." ".$searching_param[$s] !== $cfg2_sequence." ".$finded_param[$s]) break;
+									else {
+										$cfg1_sequence .= $searching_param[$s]." ";
+										$cfg2_sequence .= $finded_param[$s]." ";
+										unset($searching_param[$s]);
+										unset($finded_param[$s]);
+									}
+								}
+								$cfg2_line = $j;
+								$f = $k = $l;
+								$html_prev_diff .= "<tr><td class='line-numbers'>".$f++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
+							} elseif($finded_param === null && $cfg2_line < count($cfg2) - 1) { //Нет совпадений для второго конфига
+								$html_temp_diff .= "<tr><td class='line-numbers'>".$l++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
 							}
 						}
-						$html_cfg_diffirence .= "</td><td class='second_config'>".$finded_param[0];
-						for($index = 1; $index < count($finded_param); $index++) {
-							if($finded_param[$index] !== $searching_param[min($index, count($searching_param) - 1)]) {
-								$html_cfg_diffirence .= " <mark>".$finded_param[$index]."</mark>";
-							}
-							else {
-								$html_cfg_diffirence .= " ".$finded_param[$index];
-							}
-						} */
-						//$html_cfg_diffirence .= "</td></tr>";
-						//$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'><mark>".$cfg2[$cfg2_line]."</mark></td></tr>";
-					} else
-						$cfg2_line = min($j, count($cfg2) - 1);
+						if ($k !== $l || ($cfg2_line >= count($cfg2) - 1 && $finded_param === null)) { //Нет совпадений для первого конфига
+							$f = max($k, $l, $f);
+							if($cfg2_line >= count($cfg2) - 1) 
+								$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
+							else 
+								$html_temp_diff = "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
+							$l = $k;
+							$cfg2_line--;
+							$i--;
+							$main_sequence = '';
+							$html_prev_diff = '';
+						} elseif($finded_param !== null) { //Есть частичное совпадение со вторым конфигом
+							$html_temp_diff .= "<tr><td class='line-numbers'>".$k++."</td></td><td class='first_config'>".(($cfg1[$cfg1_line][0] === ' ') ? " " : "").trim($cfg1_sequence)." <mark>".implode(" ", $searching_param)."</mark></td><td class='second_config'>".(($cfg2[$cfg2_line][0] === ' ') ? " " : "").trim($cfg2_sequence)." <mark>".implode(" ", $finded_param)."</mark></td></tr>";
+							if($cfg2_line < count($cfg2) - 1)
+								$cfg2_line = min($j, count($cfg2) - 1) - 1;
+							$main_sequence = '';
+						} else
+							$line_limiter = $cfg2_line = min($j, count($cfg2) - 1);
+					}
 				}
-			} elseif($cfg2_line < count($cfg2)) {
-				$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
+			} elseif($cfg2_line < count($cfg2)) { //Конец второго конфига еще не достигнут
+				$html_cfg_diffirence .= $html_temp_diff."<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
+				$html_temp_diff = '';
 			} else break;
 			$cfg1_line += ($cfg1_line < count($cfg1)) ? 1 : 0;
 			$cfg2_line += ($cfg2_line < count($cfg2)) ? 1 : 0;
 			//echo $cfg1_line." ".$cfg2_line." ";
 		}
-		//$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$i++."</td><td class='first_config'>".$param."</td><td class='second_config'></td></tr>";
-		/* foreach($cfg1 as $index => $param) {
-			
-			
-			
-			 $html_cfg_diffirence .= "<tr>
-						<td class='line-numbers'>".$i++."</td>
-						<td class='first_config'>";
-			if(array_key_exists($param, $cfg1) && array_key_exists($param, $cfg2)) {
-				if($cfg1[$param]['value'] !== $cfg2[$param]['value']) {
-					$html_cfg_diffirence .= $cfg1[$param]['key']."&nbsp;<mark>".$cfg1[$param]['value']."</mark></td>
-						<td class='second_config'>".$cfg2[$param]['key']."&nbsp;<mark>".$cfg2[$param]['value']."</mark></td>";
-				}
-				else {
-					$html_cfg_diffirence .= $cfg1[$param]['key']."&nbsp;".$cfg1[$param]['value']."</td>
-						<td class='second_config'>".$cfg2[$param]['key']."&nbsp;".$cfg2[$param]['value']."</td>";
-				}
-			}
-			else {
-				if(array_key_exists($param, $cfg1)) {
-					$html_cfg_diffirence .= "<mark class='lone'>".$cfg1[$param]['key']."&nbsp;".$cfg1[$param]['value']."</mark></td><td class='second_config'></td>";
-				}
-				else {
-					$html_cfg_diffirence .= "</td><td class='second_config'><mark class='lone'>".$cfg2[$param]['key']."&nbsp;".$cfg2[$param]['value']."</mark></td>";
-				}
-			}
-			$html_cfg_diffirence .= "</tr>"; 
-		} */
 	}
 	else {
 		$html_cfg_diffirence = "<tr><td></td><td class='first_config'>";

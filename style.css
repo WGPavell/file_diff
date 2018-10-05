@@ -48,3 +48,6 @@ input {display: block; margin:0 auto; border:2px solid #9A9A9A; padding:5px; wid
 	background: #8A0002;
 	color:white;
 }
+td {
+	white-space: pre;
+}
