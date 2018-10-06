@@ -1,5 +1,5 @@
 <?php
-	
+
 	const CONFIG_DIRECTORY = 'cfgs/';
 
 	function file_diff_errors(int $error_code) {
@@ -73,14 +73,13 @@
 		$prev_finded = false; //Если поиск из предыдущих элементов был успешен
 		$next_finded = false; //Если поиск из следующих элементов был успешен
 		$current_sequence = ''; //Текущий блок параметров
-		$html_buffer_diff = ''; //Здесь хранится временный HTML для частичных совпадений
 		$temp_k = 1; //Временный счетчик для временного HTML
 		$cfg1_finded_line = 0; //Если найдено частичное совпадение, здесь хранится номер строки первого конфига
-		for($cfg1_line = 0; $cfg1_line <= $cfg1_size - 1; $cfg1_line++) {
+		for($cfg1_line = 0; ($cfg1_line <= $cfg1_size - 1 && $cfg2_line <= $cfg2_size - 1); $cfg1_line++) {
+			//if ($cfg1_line === 4) break;
 			$prev_finded = $next_finded = false;
 			if(mb_strlen(trim($cfg1[$cfg1_line])) <= 1) { //Если строка пустая или является разделителем (по типу тех, что в cisco "!")
 				if($cfg1[$cfg1_line] === $cfg2[$cfg2_line]) { //Текущие строки конфигов совпадают
-					$html_buffer_diff = '';
 					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$cfg2_line]."</td></tr>";
 					$line_limiter = ++$cfg2_line;
 				}
@@ -92,8 +91,13 @@
 				$line_limiter = ++$cfg2_line;
 				$current_sequence = $cfg1[$cfg1_line];
 			} elseif($cfg1[$cfg1_line][0] === ' '){ //Строка является частью верхнего блока
-				if(!empty($current_sequence)) {
-					for($i = $cfg2_line + 1; ($i <= $cfg2_size - 1 && $cfg2[$i][0] === ' '); $i++) {
+				if(!empty($current_sequence)) { //Блок имеется в обоих конфигах
+					$searching_sequence = explode(' ', trim($cfg1[$cfg1_line]));
+					$searching_sequence_string = '';
+					$comprasion_sequence_string = '';
+					$finded_sequence_index = 0; //Найденный индекс частичного совпадения
+					$finded_line = 0; //Номер строки с частичным совпадением
+					for($i = $cfg2_line; ($i <= $cfg2_size - 1 && $cfg2[$i][0] === ' '); $i++) {
 						if($cfg1[$cfg1_line] === $cfg2[$i]) {
 							for($j = $line_limiter; $j < $i; $j++){
 								$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
@@ -101,32 +105,90 @@
 							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$i]."</td></tr>";
 							$cfg2_line = $line_limiter = $i + 1;
 							$next_finded = true;
-							$current_sequence = $cfg1[$cfg1_line];
+							//$current_sequence = $cfg1[$cfg1_line];
+							$comprasion_sequence_string = '';
 							break;
+						} else { //Поиск на частичное совпадение
+							if(empty($comprasion_sequence_string)) { //Частичного совпадения еще не было найдено
+								$finded_line = $i;
+								$comprasion_sequence = explode(' ', trim($cfg2[$i]));
+								while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+									  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+									$searching_sequence_string .= " ".$searching_sequence[0];
+									$comprasion_sequence_string .= " ".$comprasion_sequence[0];
+									$searching_sequence = array_splice($searching_sequence, 1);
+									$comprasion_sequence = array_splice($comprasion_sequence, 1);
+									$finded_sequence_index++;
+								}
+								
+							}
+							elseif(trim($searching_sequence_string." ".$searching_sequence[0]) === implode(' ', array_slice(explode(' ', trim($cfg2[$i])), 0, $finded_sequence_index + 1))) { //Найдено более лучшее частичное совпадение
+								$finded_line = $i;
+								$comprasion_sequence = explode(' ', trim($cfg2[$i]));
+								$comprasion_sequence = array_splice($comprasion_sequence, $finded_sequence_index);
+								while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+								  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+									$searching_sequence_string .= $searching_sequence[0];
+									$comprasion_sequence_string .= $comprasion_sequence[0];
+									$searching_sequence = array_splice($searching_sequence, 1);
+									$comprasion_sequence = array_splice($comprasion_sequence, 1);
+									$finded_sequence_index++;
+								}
+							}
 						}
 					}
-					if(!$next_finded) { //Совпадений нет
+					if(!empty($comprasion_sequence_string)) { //Есть частичное совпадение
+						$cfg1_line_buff = $cfg1_line;
+						for($i = $cfg1_line + 1; $i <= $cfg1_size - 1; $i++) {
+							if($cfg1[$i][0] === ' ' && mb_strlen(trim($cfg1[$i])) > 1) {
+								$second_comprasion_sequence = explode(' ', trim($cfg1[$i]));
+								if(count($second_comprasion_sequence) < $finded_sequence_index) continue;
+								$second_comprasion_sequence_string = '';
+								for($j = 0; $j < $finded_sequence_index; $j++)
+									$second_comprasion_sequence_string .= " ".$second_comprasion_sequence[$j];
+								$second_comprasion_sequence = array_splice($second_comprasion_sequence, $finded_sequence_index);
+								if(trim($second_comprasion_sequence_string) === trim($searching_sequence_string) && count($second_comprasion_sequence) > 0 && 
+								   trim($second_comprasion_sequence_string." ".$second_comprasion_sequence[0]) === trim($comprasion_sequence_string." ".$comprasion_sequence[0])) { //Найдено более лучшее частичное совпадение
+									$cfg1_line = $i;
+									$searching_sequence = $second_comprasion_sequence;
+									$searching_sequence_string = $second_comprasion_sequence_string;
+									while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+									  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+										$searching_sequence_string .= " ".$searching_sequence[0];
+										$comprasion_sequence_string .= " ".$comprasion_sequence[0];
+										$searching_sequence = array_splice($searching_sequence, 1);
+										$comprasion_sequence = array_splice($comprasion_sequence, 1);
+										$finded_sequence_index++;
+									}
+								}
+							}
+						}
+						for($i = $cfg1_line_buff; $i < $cfg1_line; $i++) {
+							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$i]."</mark></td><td class='second_config'></td></tr>";
+						}
+						for($i = $line_limiter; $i < $finded_line; $i++){
+							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$i]."</mark></td></tr>";
+						}
+						$line_limiter = $cfg2_line = $finded_line + 1;
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'> ".trim($searching_sequence_string)." <mark>".implode(' ', $searching_sequence)."</mark></td><td class='second_config'> ".trim($comprasion_sequence_string)." <mark>".implode(' ', $comprasion_sequence)."</mark></td></tr>";
+					}  elseif(!$next_finded) { //Совпадений нет
 						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 					}
 					if($cfg1[$cfg1_line+1][0] !== ' ')
 						for($cfg2_line; ($cfg2_line <= $cfg2_size - 1 && $cfg2[$cfg2_line][0] === ' '); $cfg2_line++) {
 							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
 						}
-				}
-				else {
+				} else {
 					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 				}
 			} else { //Поиск из следующих строк 2 конфига
-				//echo $cfg1[$cfg1_line]." ".$cfg2_line."<br>";
 				$searching_sequence = explode(' ', trim($cfg1[$cfg1_line]));
-				$searching_sequence_string = $searching_sequence[0];
-				unset($searching_sequence[0]);
+				$searching_sequence_string = '';
 				$comprasion_sequence_string = '';
 				$finded_sequence_index = 0; //Найденный индекс частичного совпадения
 				$finded_line = 0; //Номер строки с частичным совпадением
 				for($i = $cfg2_line; $i <= $cfg2_size - 1; $i++) {
 					if($cfg1[$cfg1_line] === $cfg2[$i]) { //Совпадение найдено
-						$html_buffer_diff = '';
 						for($j = $line_limiter; $j < $i; $j++){
 							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
 						}
@@ -138,74 +200,76 @@
 						break;
 					} elseif($cfg2[$i][0] !== ' ') { //Поиск на частичное совпадение
 						if(empty($comprasion_sequence_string)) { //Частичного совпадения еще не было найдено
+							$finded_line = $i;
 							$comprasion_sequence = explode(' ', trim($cfg2[$i]));
-							if($searching_sequence_string === $comprasion_sequence[0]) { //Найдено первое частичное совпадение
-								$comprasion_sequence_string = $comprasion_sequence[0];
-								unset($comprasion_sequence[0]);
+							while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+								  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+								$searching_sequence_string .= " ".$searching_sequence[0];
+								$comprasion_sequence_string .= " ".$comprasion_sequence[0];
+								$searching_sequence = array_splice($searching_sequence, 1);
+								$comprasion_sequence = array_splice($comprasion_sequence, 1);
 								$finded_sequence_index++;
-								$finded_line = $i;
-								$cfg1_finded_line = $cfg1_line;
-								for($g = 0; $g <= count($searching_sequence) - 1; $g++) {
-									if($g <= count($comprasion_sequence) - 1 && $searching_sequence_string === $comprasion_sequence_string." ".$comprasion_sequence[$g + $finded_sequence_index]) {
-										$searching_sequence_string .= " ".$searching_sequence[$g + $finded_sequence_index];
-										unset($searching_sequence[$g]);
-										$comprasion_sequence_string .= " ".$comprasion_sequence[$g + $finded_sequence_index];
-										unset($comprasion_sequence[$g]);
-										$finded_sequence_index++;
-									}
-									else break;
-								}
 							}
+							
 						}
-						else { //При наличии частичного совпадения
-							if($searching_sequence_string." ".$searching_sequence[$finded_sequence_index] === implode(' ', array_slice(explode(' ', trim($cfg2[$i])), 0, $finded_sequence_index + 1))) { //Найдено более лучшее частичное совпадение
-								$searching_sequence_string .= " ".$searching_sequence[$finded_sequence_index];
-								unset($searching_sequence[$finded_sequence_index]);
-								$comprasion_sequence = explode(' ', trim($cfg2[$i]));
-								$comprasion_sequence_string .= " ".$comprasion_sequence[$finded_sequence_index];
-								for($g = 0; $g <= $finded_sequence_index; $g++)
-									unset($comprasion_sequence[$g]);
+						elseif(trim($searching_sequence_string." ".$searching_sequence[0]) === implode(' ', array_slice(explode(' ', trim($cfg2[$i])), 0, $finded_sequence_index + 1))) { //Найдено более лучшее частичное совпадение
+							$finded_line = $i;
+							$comprasion_sequence = explode(' ', trim($cfg2[$i]));
+							$comprasion_sequence = array_splice($comprasion_sequence, $finded_sequence_index);
+							while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+							  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+								$searching_sequence_string .= $searching_sequence[0];
+								$comprasion_sequence_string .= $comprasion_sequence[0];
+								$searching_sequence = array_splice($searching_sequence, 1);
+								$comprasion_sequence = array_splice($comprasion_sequence, 1);
 								$finded_sequence_index++;
-								$finded_line = $i;
-								for($g = 0; $g <= count($searching_sequence) - 1; $g++) {
-									if($g <= count($comprasion_sequence) - 1 &&
-									   $searching_sequence_string." ".$searching_sequence[$g + $finded_sequence_index] ===
-									   $comprasion_sequence_string." ".$comprasion_sequence[$g + $finded_sequence_index]) {
-										$searching_sequence_string .= " ".$searching_sequence[$g + $finded_sequence_index];
-										unset($searching_sequence[$g]);
-										$comprasion_sequence_string .= " ".$comprasion_sequence[$g + $finded_sequence_index];
-										unset($comprasion_sequence[$g]);
-										$finded_sequence_index++;
-										//$g--;
-									}
-									else break;
-								}
 							}
 						}
 					}
 				}
 				if(!empty($comprasion_sequence_string)) { //Есть частичное совпадение
-					$temp_k = $k;
-					for($j = $line_limiter; $j < $finded_line; $j++){
-						$html_buffer_diff .= "<tr><td class='line-numbers'>".$temp_k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$j]."</mark></td></tr>";
+					$cfg1_line_buff = $cfg1_line;
+					for($i = $cfg1_line + 1; $i <= $cfg1_size - 1; $i++) {
+						if($cfg1[$i][0] !== ' ' && mb_strlen(trim($cfg1[$i])) > 1) {
+							$second_comprasion_sequence = explode(' ', trim($cfg1[$i]));
+							if(count($second_comprasion_sequence) < $finded_sequence_index) continue;
+							$second_comprasion_sequence_string = '';
+							for($j = 0; $j < $finded_sequence_index; $j++)
+								$second_comprasion_sequence_string .= " ".$second_comprasion_sequence[$j];
+							$second_comprasion_sequence = array_splice($second_comprasion_sequence, $finded_sequence_index);
+							if(trim($second_comprasion_sequence_string) === trim($searching_sequence_string) && count($second_comprasion_sequence) > 0 && 
+							   trim($second_comprasion_sequence_string." ".$second_comprasion_sequence[0]) === trim($comprasion_sequence_string." ".$comprasion_sequence[0])) { //Найдено более лучшее частичное совпадение
+								$cfg1_line = $i;
+								$searching_sequence = $second_comprasion_sequence;
+								$searching_sequence_string = $second_comprasion_sequence_string;
+								while(count($searching_sequence) > 0 && count($comprasion_sequence) > 0 && //Поиск совпадений
+								  $searching_sequence_string." ".$searching_sequence[0] === $comprasion_sequence_string." ".$comprasion_sequence[0]) {
+									$searching_sequence_string .= " ".$searching_sequence[0];
+									$comprasion_sequence_string .= " ".$comprasion_sequence[0];
+									$searching_sequence = array_splice($searching_sequence, 1);
+									$comprasion_sequence = array_splice($comprasion_sequence, 1);
+									$finded_sequence_index++;
+								}
+							}
+						}
 					}
-					$html_buffer_diff .= "<tr><td class='line-numbers'>".$temp_k++."</td><td class='first_config'>".$searching_sequence_string." <mark>".implode(' ', $searching_sequence)."</mark></td><td class='second_config'>".$comprasion_sequence_string." <mark>".implode(' ', $comprasion_sequence)."</mark></td></tr>";
-					//$cfg2_line = $line_limiter = $finded_line + 1;
+					for($i = $cfg1_line_buff; $i < $cfg1_line; $i++) {
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$i]."</mark></td><td class='second_config'></td></tr>";
+					}
+					for($i = $line_limiter; $i < $finded_line; $i++){
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$i]."</mark></td></tr>";
+					}
+					$line_limiter = $cfg2_line = $finded_line + 1;
+					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".trim($searching_sequence_string)." <mark>".implode(' ', $searching_sequence)."</mark></td><td class='second_config'>".trim($comprasion_sequence_string)." <mark>".implode(' ', $comprasion_sequence)."</mark></td></tr>";
 					$current_sequence = '';
-					//$next_finded = true;
-					//$current_sequence = $cfg1[$cfg1_line];
-					//break;
-				} elseif (!empty($html_buffer_diff)) {
-					$k = $temp_k;
-					$html_cfg_diffirence .= $html_buffer_diff;
-					$cfg2_line = $line_limiter = $finded_line + 1;
-					$html_buffer_diff = '';
 				} elseif(!$next_finded) { //Совпадений нет
 					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 					$current_sequence = '';
 				}
 			}
 		}
+		for($cfg1_line; $cfg1_line <= $cfg1_size - 1; $cfg1_line++)
+			$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 		for($cfg2_line; $cfg2_line <= $cfg2_size - 1; $cfg2_line++)
 			$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
 	}
