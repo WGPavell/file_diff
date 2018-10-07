@@ -51,6 +51,7 @@
 		$temp_k = 1; //Временный счетчик для временного HTML
 		$cfg1_finded_line = 0; //Если найдено частичное совпадение, здесь хранится номер строки первого конфига
 		for($cfg1_line = 0; ($cfg1_line <= $cfg1_size - 1 && $cfg2_line <= $cfg2_size - 1); $cfg1_line++) { //Проходимся по строкам по 1 конфига
+			//if($cfg1_line === 63) break;
 			$next_finded = false;
 			if(mb_strlen(trim($cfg1[$cfg1_line])) <= 1) { //Если строка пустая или является разделителем (по типу тех, что в cisco "!")
 				if($cfg1[$cfg1_line] === $cfg2[$cfg2_line]) { //Текущие строки конфигов совпадают
@@ -62,8 +63,15 @@
 				}
 			} elseif($cfg1[$cfg1_line] === $cfg2[$cfg2_line]) { //Текущие строки конфигов совпали
 				$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'>".$cfg1[$cfg1_line]."</td><td class='second_config'>".$cfg2[$cfg2_line]."</td></tr>";
-				$line_limiter = ++$cfg2_line;
-				$current_sequence = $cfg1[$cfg1_line];
+				if($cfg1_line + 1 <= $cfg1_size - 1 && $cfg1[$cfg1_line+1][0] !== ' ' && $cfg1[$cfg1_line][0] === ' '){ //Если текущая строка является частью верхнего блока, а следующая строка не является частью
+					for(++$cfg2_line; ($cfg2_line <= $cfg2_size - 1 && $cfg2[$cfg2_line][0] === ' '); $cfg2_line++) {
+						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
+					}
+					$line_limiter = $cfg2_line;
+				} else {
+					$line_limiter = ++$cfg2_line;
+					$current_sequence = $cfg1[$cfg1_line];
+				}
 			} elseif($cfg1[$cfg1_line][0] === ' '){ //Строка является частью верхнего блока
 				if(!empty($current_sequence)) { //Блок имеется в обоих конфигах
 					$searching_sequence = explode(' ', trim($cfg1[$cfg1_line]));
@@ -145,13 +153,15 @@
 						}
 						$line_limiter = $cfg2_line = $finded_line + 1;
 						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'> ".trim($searching_sequence_string)." <mark>".implode(' ', $searching_sequence)."</mark></td><td class='second_config'> ".trim($comprasion_sequence_string)." <mark>".implode(' ', $comprasion_sequence)."</mark></td></tr>";
-					}  elseif(!$next_finded) { //Совпадений нет
+					} elseif(!$next_finded) { //Совпадений нет
 						$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 					}
-					if($cfg1[$cfg1_line+1][0] !== ' ') //Если следующая строка не является частью верхнего блока
+					if($cfg1[$cfg1_line+1][0] !== ' '){ //Если следующая строка не является частью верхнего блока
 						for($cfg2_line; ($cfg2_line <= $cfg2_size - 1 && $cfg2[$cfg2_line][0] === ' '); $cfg2_line++) {
 							$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'></td><td class='second_config'><mark class='lone'>".$cfg2[$cfg2_line]."</mark></td></tr>";
 						}
+						$line_limiter = $cfg2_line;
+					}
 				} else { //Такого блока нет во 2 конфиге
 					$html_cfg_diffirence .= "<tr><td class='line-numbers'>".$k++."</td><td class='first_config'><mark class='lone'>".$cfg1[$cfg1_line]."</mark></td><td class='second_config'></td></tr>";
 				}
